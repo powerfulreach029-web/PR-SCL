@@ -1,0 +1,5 @@
+{
+  "name": "PR-SCL",
+  "description": "Système de Gestion Scolaire complet avec génération de bulletins et assistant IA.",
+  "requestFramePermissions": []
+}
