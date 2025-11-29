@@ -1,22 +1,14 @@
-
 import { GoogleGenAI } from "@google/genai";
-
-const apiKey = process.env.API_KEY;
 
 export const sendMessageToGemini = async (
   message: string,
   context: string,
   history: { role: 'user' | 'model'; parts: { text: string }[] }[]
 ): Promise<string> => {
-  if (!apiKey) {
-    return "Erreur : Clé API manquante. Veuillez configurer l'environnement.";
-  }
-
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    // The API key must be obtained exclusively from the environment variable process.env.API_KEY.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // We create a new chat session for simplicity in this context, 
-    // or we could maintain one. Here we pass simple history.
     // For the specific prompt "gemini-3-pro-preview"
     const model = "gemini-3-pro-preview"; 
 
