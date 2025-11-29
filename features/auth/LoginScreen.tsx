@@ -9,12 +9,9 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
-  
   // Auth State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [schoolName, setSchoolName] = useState('');
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,33 +26,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       setLoading(true);
 
       try {
-          if (activeTab === 'register') {
-              if (!schoolName) throw new Error("Le nom de l'école est obligatoire");
-              await api.signUp(email, password, schoolName);
-              // Auto login after signup attempt
-              try {
-                  await api.signIn(email, password);
-              } catch (e) {
-                  alert("Compte créé ! Connectez-vous maintenant.");
-                  setActiveTab('login');
-                  setLoading(false);
-                  return;
-              }
-          } else {
-              await api.signIn(email, password);
-          }
+          // Uniquement connexion
+          await api.signIn(email, password);
 
           const session = await api.fetchUserSession();
           if (session) {
               onLoginSuccess(session);
           } else {
               setError("Connexion réussie mais la configuration de l'école a échoué.");
-              // Si pas de session après login, c'est critique (tables manquantes probablement)
               setShowSqlHelp(true);
           }
 
       } catch (err: any) {
-          setError(err.message || "Une erreur est survenue.");
+          setError(err.message || "Email ou mot de passe incorrect.");
       } finally {
           setLoading(false);
       }
@@ -66,7 +49,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       alert("Script copié ! Collez-le dans l'éditeur SQL de Supabase.");
   };
 
-  // --- RENDU : LOGIN / REGISTER ---
+  // --- RENDU : LOGIN UNIQUEMENT ---
   return (
     <div className="flex items-center justify-center p-4 min-h-screen">
       <div className="max-w-md w-full relative z-20">
@@ -79,34 +62,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </div>
 
         <Card className="backdrop-blur-md">
-            {/* Tabs */}
-            <div className="flex border-b border-gray-200 dark:border-white/10 mb-6">
-                <button 
-                    className={`flex-1 py-2 font-medium text-sm transition-colors ${activeTab === 'login' ? 'text-[var(--primary-color)] border-b-2 border-[var(--primary-color)] dark:text-white dark:border-white dark:drop-shadow-[0_0_5px_white]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-                    onClick={() => setActiveTab('login')}
-                >
-                    Connexion
-                </button>
-                <button 
-                    className={`flex-1 py-2 font-medium text-sm transition-colors ${activeTab === 'register' ? 'text-[var(--primary-color)] border-b-2 border-[var(--primary-color)] dark:text-white dark:border-white dark:drop-shadow-[0_0_5px_white]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-                    onClick={() => setActiveTab('register')}
-                >
-                    Créer une école
-                </button>
-            </div>
+            <h2 className="text-xl font-bold text-center mb-6 text-gray-800 dark:text-white border-b pb-4 border-gray-100 dark:border-white/10">
+                Espace Connexion
+            </h2>
 
             <form onSubmit={handleAuthSubmit} className="space-y-4">
-                {activeTab === 'register' && (
-                    <Input 
-                        label="Nom de l'établissement" 
-                        placeholder="Ex: Lycée Moderne..." 
-                        value={schoolName}
-                        onChange={e => setSchoolName(e.target.value)}
-                        required
-                        className="dark:bg-black/20"
-                    />
-                )}
-                
                 <Input 
                     type="email"
                     label="Email administrateur" 
@@ -141,13 +101,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 )}
 
                 <Button type="submit" className="w-full mt-4" size="lg" disabled={loading}>
-                    {loading ? <i className="fas fa-spinner fa-spin"></i> : (activeTab === 'register' ? "Créer mon école" : "Se connecter")}
+                    {loading ? <i className="fas fa-spinner fa-spin"></i> : "Se connecter"}
                 </Button>
             </form>
             
-            <div className="mt-6 text-center">
-                 <button onClick={() => setShowSqlHelp(true)} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                     Outils configuration serveur
+            {/* Lien discret pour le setup DB si besoin pour admin */}
+            <div className="mt-8 text-center pt-4 border-t border-gray-100 dark:border-white/10">
+                 <button onClick={() => setShowSqlHelp(true)} className="text-[10px] text-gray-300 hover:text-gray-500 dark:hover:text-gray-200 transition-colors">
+                     admin: setup db
                  </button>
             </div>
         </Card>

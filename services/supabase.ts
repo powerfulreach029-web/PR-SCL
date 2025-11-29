@@ -8,7 +8,8 @@ import { INITIAL_CYCLES, INITIAL_SUBJECTS, INITIAL_SETTINGS } from '../constants
 const supabaseUrl = 'https://jowirbbzhmldiwsbpdmo.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impvd2lyYmJ6aG1sZGl3c2JwZG1vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyMjg2OTcsImV4cCI6MjA3OTgwNDY5N30.PRVPl6hIt8l4-SNln-YTG7NJpa-MSsaFTUhEGa1blLA';
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Trim keys to avoid 'Failed to fetch' errors due to whitespace
+export const supabase = createClient(supabaseUrl.trim(), supabaseKey.trim());
 
 // Variable locale pour stocker l'ID de l'école après connexion
 let currentSchoolId: string | null = null;
@@ -229,12 +230,14 @@ export const fetchUserSession = async (): Promise<UserSession | null> => {
 
 export const fetchStudents = async (): Promise<Student[]> => {
   if (!currentSchoolId) return [];
-  const { data, error } = await supabase.from('students').select('*').eq('school_id', currentSchoolId);
-  if (error) {
-    console.error('Error fetching students:', error.message);
-    return [];
+  try {
+      const { data, error } = await supabase.from('students').select('*').eq('school_id', currentSchoolId);
+      if (error) throw error;
+      return data || [];
+  } catch (error: any) {
+      console.error('Error fetching students:', error.message || error);
+      throw error;
   }
-  return data || [];
 };
 
 export const addStudentDB = async (student: Student) => {
@@ -260,12 +263,14 @@ export const deleteStudentDB = async (id: string) => {
 
 export const fetchGrades = async (): Promise<Grade[]> => {
   if (!currentSchoolId) return [];
-  const { data, error } = await supabase.from('grades').select('*').eq('school_id', currentSchoolId);
-  if (error) {
-    console.error('Error fetching grades:', error.message);
-    return [];
+  try {
+      const { data, error } = await supabase.from('grades').select('*').eq('school_id', currentSchoolId);
+      if (error) throw error;
+      return data || [];
+  } catch (error: any) {
+      console.error('Error fetching grades:', error.message || error);
+      throw error;
   }
-  return data || [];
 };
 
 export const addGradeDB = async (grade: Grade) => {
@@ -292,28 +297,35 @@ export const deleteGradeDB = async (id: string) => {
 const fetchConfig = async <T>(key: string, defaultValue: T): Promise<T> => {
   if (!currentSchoolId) return defaultValue;
 
-  const { data, error } = await supabase
-    .from('app_config')
-    .select('data')
-    .eq('key', key)
-    .single();
-  
-  if (error || !data) {
-    // Si la table n'existe pas, une erreur est levée, mais on retourne la valeur par défaut
-    // Si la ligne n'existe pas (PGRST116), on l'initialise
-    if (error?.code === 'PGRST116') {
-       await supabase.from('app_config').insert([{ 
-           school_id: currentSchoolId,
-           key, 
-           data: defaultValue 
-       }]);
-       return defaultValue;
-    }
-    // Autre erreur (ex: table manquante)
-    if (error) console.warn(`Config fetch warning (${key}):`, error.message);
-    return defaultValue;
+  try {
+      const { data, error } = await supabase
+        .from('app_config')
+        .select('data')
+        .eq('key', key)
+        .single();
+      
+      if (error || !data) {
+        // Si la ligne n'existe pas (PGRST116), on l'initialise
+        if (error?.code === 'PGRST116') {
+           await supabase.from('app_config').insert([{ 
+               school_id: currentSchoolId,
+               key, 
+               data: defaultValue 
+           }]);
+           return defaultValue;
+        }
+        // Autre erreur (ex: table manquante ou réseau)
+        if (error) {
+            console.warn(`Config fetch warning (${key}):`, error.message);
+            // On ne throw pas ici pour permettre le chargement partiel avec valeurs par défaut
+        }
+        return defaultValue;
+      }
+      return data.data as T;
+  } catch (e) {
+      console.error(`Error fetching config ${key}`, e);
+      return defaultValue;
   }
-  return data.data as T;
 };
 
 const saveConfig = async (key: string, data: any) => {
